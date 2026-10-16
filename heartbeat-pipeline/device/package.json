@@ -1,0 +1,14 @@
+{
+  "name": "@heartbeat/device",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "pipeline": "src/cli.js"
+  },
+  "dependencies": {
+    "@heartbeat/core": "^0.0.1",
+    "better-sqlite3": "^11.1.2",
+    "commander": "^12.1.0"
+  }
+}

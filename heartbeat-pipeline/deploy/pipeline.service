@@ -1,0 +1,17 @@
+﻿[Unit]
+Description=Heartbeat Pipeline
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/node /opt/heartbeat-pipeline/device/src/cli.js run
+WorkingDirectory=/opt/heartbeat-pipeline
+Restart=always
+RestartSec=1
+User=pi
+Group=pi
+EnvironmentFile=/etc/heartbeat-pipeline/pipeline.env
+CPUQuota=400%
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target

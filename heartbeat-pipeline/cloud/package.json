@@ -1,0 +1,12 @@
+{
+  "name": "@heartbeat/cloud",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@heartbeat/core": "^0.0.1",
+    "express": "^4.19.2",
+    "mongodb": "^6.8.0"
+  },
+  "scripts": { "start": "node src/server.js" }
+}

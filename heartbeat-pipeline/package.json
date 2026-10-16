@@ -1,0 +1,28 @@
+{
+  "name": "heartbeat-pipeline",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "core",
+    "device",
+    "cloud"
+  ],
+  "scripts": {
+    "test": "node --test --test-reporter=spec",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "start:cloud": "npm --workspace @heartbeat/cloud start",
+    "pipeline": "npm --workspace @heartbeat/device exec -- pipeline",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0"
+  }
+}
