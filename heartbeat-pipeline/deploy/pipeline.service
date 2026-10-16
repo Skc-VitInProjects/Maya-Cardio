@@ -3,8 +3,8 @@ Description=Heartbeat Pipeline
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/node /opt/heartbeat-pipeline/device/src/cli.js run
-WorkingDirectory=/opt/heartbeat-pipeline
+ExecStart=/usr/bin/node @APP_ROOT@/device/src/cli.js run
+WorkingDirectory=@APP_ROOT@
 Restart=always
 RestartSec=1
 User=pi

@@ -5,7 +5,27 @@ export default [
   js.configs.recommended,
   {
     files: ['**/*.js'],
-    languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: { Buffer: 'readonly', console: 'readonly', fetch: 'readonly', process: 'readonly', setTimeout: 'readonly', clearTimeout: 'readonly', performance: 'readonly', URL: 'readonly' } },
-    rules: { 'no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }] },
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        AbortSignal: 'readonly',
+        Buffer: 'readonly',
+        clearTimeout: 'readonly',
+        console: 'readonly',
+        document: 'readonly',
+        fetch: 'readonly',
+        performance: 'readonly',
+        process: 'readonly',
+        setTimeout: 'readonly',
+        URL: 'readonly',
+      },
+    },
+    rules: {
+      'no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+      ],
+    },
   },
 ];

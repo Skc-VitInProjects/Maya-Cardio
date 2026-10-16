@@ -15,10 +15,12 @@ export function computeWindowStats(sensor1Samples, sensor2Samples) {
 
   // count available
   for (let i = 0; i < sensor1Samples.length; i++) {
-    if (sensor1Samples[i] === null || sensor1Samples[i] === undefined) res.missing_1++;
+    if (sensor1Samples[i] === null || sensor1Samples[i] === undefined)
+      res.missing_1++;
   }
   for (let i = 0; i < sensor2Samples.length; i++) {
-    if (sensor2Samples[i] === null || sensor2Samples[i] === undefined) res.missing_2++;
+    if (sensor2Samples[i] === null || sensor2Samples[i] === undefined)
+      res.missing_2++;
   }
   res.complete = res.missing_1 === 0 && res.missing_2 === 0;
 

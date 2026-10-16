@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-pipeline_kill(){ sudo pkill -9 -f '[p]ipeline run'; }
+pipeline_kill(){ sudo systemctl kill --kill-who=main --signal=KILL pipeline.service; }
 network_cut(){ sudo iptables -A OUTPUT -p tcp --dport 443 -j DROP; }
 network_restore(){ sudo iptables -D OUTPUT -p tcp --dport 443 -j DROP; }
 mock_stop(){ sudo pkill -STOP -f '[b]iosignal-mock'; }

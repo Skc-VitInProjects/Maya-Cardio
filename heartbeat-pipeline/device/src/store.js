@@ -22,43 +22,138 @@ export class Store {
     const check = this.db.pragma('quick_check', { simple: true });
     if (check !== 'ok') throw new Error(`SQLite quick_check failed: ${check}`);
     this.reservePath = path.join(path.dirname(filename), 'reserve.bin');
-    if (!fs.existsSync(this.reservePath)) {
+    const diskFull =
+      this.get("SELECT value FROM meta WHERE key='disk_full'")?.value ===
+      'true';
+    if (!fs.existsSync(this.reservePath) && !diskFull) {
       const fd = fs.openSync(this.reservePath, 'w');
-      fs.writeSync(fd, Buffer.alloc(8 * 1024 * 1024));
+      const reserve = Buffer.alloc(8 * 1024 * 1024);
+      let written = 0;
+      while (written < reserve.length)
+        written += fs.writeSync(fd, reserve, written, reserve.length - written);
       fs.fsyncSync(fd);
       fs.closeSync(fd);
     }
   }
 
   /** Execute a set of writes atomically and durably. */
-  transaction(fn) { return this.db.transaction(fn)(); }
+  transaction(fn) {
+    return this.db.transaction(fn)();
+  }
   /** Read SQL rows. */
-  all(sql, ...params) { return this.db.prepare(sql).all(...params); }
+  all(sql, ...params) {
+    return this.db.prepare(sql).all(...params);
+  }
   /** Read one SQL row. */
-  get(sql, ...params) { return this.db.prepare(sql).get(...params); }
+  get(sql, ...params) {
+    return this.db.prepare(sql).get(...params);
+  }
   /** Iterate SQL rows without loading the full result into memory. */
-  *iterate(sql, ...params) { yield* this.db.prepare(sql).iterate(...params); }
+  *iterate(sql, ...params) {
+    yield* this.db.prepare(sql).iterate(...params);
+  }
   /** Execute a SQL write. */
-  run(sql, ...params) { return this.db.prepare(sql).run(...params); }
+  run(sql, ...params) {
+    return this.db.prepare(sql).run(...params);
+  }
   /** Close the database cleanly. */
-  close() { this.db.close(); }
+  close() {
+    this.db.close();
+  }
 
   /** Save one validated reply and advance its cursor in the same transaction. */
   saveReply(reply, fresh, payload) {
-    const insertSession = this.db.prepare('INSERT OR IGNORE INTO sessions(id,first_seen) VALUES(?,?)');
-    const cursor = this.db.prepare('INSERT INTO cursors(session,sensor,next_index,ended) VALUES(?,?,0,0) ON CONFLICT(session,sensor) DO NOTHING');
-    const chunk = this.db.prepare('INSERT OR IGNORE INTO chunks(session,sensor,first_index,count,payload,crc32) VALUES(?,?,?,?,?,?)');
-    const loss = this.db.prepare('INSERT OR IGNORE INTO losses(session,sensor,from_index,to_index,reason,source) VALUES(?,?,?,?,?,?)');
-    const advance = this.db.prepare('UPDATE cursors SET next_index=?,ended=? WHERE session=? AND sensor=?');
-    this.transaction(() => {
-      insertSession.run(reply.session_id, new Date().toISOString());
-      cursor.run(reply.session_id, reply.sensor);
-      for (const item of reply.lost ?? []) loss.run(reply.session_id, reply.sensor, item.from_index, item.to_index ?? null, item.reason ?? 'mock_loss', 'mock');
-      if (fresh.length) chunk.run(reply.session_id, reply.sensor, fresh[0].index, fresh.length, payload, reply.crc32);
-      const maxLoss = Math.max(-1, ...(reply.lost ?? []).map(item => Number(item.to_index ?? -1)));
-      const next = Math.max(Number(reply.first_index) + Number(reply.count), maxLoss + 1, Number(this.get('SELECT next_index FROM cursors WHERE session=? AND sensor=?', reply.session_id, reply.sensor)?.next_index ?? 0));
-      advance.run(next, reply.session_end ? 1 : 0, reply.session_id, reply.sensor);
-      if (reply.session_end) this.run('UPDATE sessions SET ended=1 WHERE id=?', reply.session_id);
-    });
+    const insertSession = this.db.prepare(
+      'INSERT OR IGNORE INTO sessions(id,first_seen) VALUES(?,?)',
+    );
+    const cursor = this.db.prepare(
+      'INSERT INTO cursors(session,sensor,next_index,ended) VALUES(?,?,0,0) ON CONFLICT(session,sensor) DO NOTHING',
+    );
+    const chunk = this.db.prepare(
+      'INSERT OR IGNORE INTO chunks(session,sensor,first_index,count,payload,crc32) VALUES(?,?,?,?,?,?)',
+    );
+    const loss = this.db.prepare(
+      'INSERT OR IGNORE INTO losses(session,sensor,from_index,to_index,reason,source) VALUES(?,?,?,?,?,?)',
+    );
+    const advance = this.db.prepare(
+      'UPDATE cursors SET next_index=?,ended=? WHERE session=? AND sensor=?',
+    );
+    const persist = (dropSamples) =>
+      this.transaction(() => {
+        insertSession.run(reply.session_id, new Date().toISOString());
+        for (const sensor of [1, 2]) cursor.run(reply.session_id, sensor);
+        for (const item of reply.lost ?? [])
+          loss.run(
+            reply.session_id,
+            reply.sensor,
+            item.from_index,
+            item.to_index ?? null,
+            item.reason ?? 'mock_loss',
+            'mock',
+          );
+        if (!dropSamples && fresh.length)
+          chunk.run(
+            reply.session_id,
+            reply.sensor,
+            fresh[0].index,
+            fresh.length,
+            payload,
+            reply.crc32,
+          );
+        if (dropSamples && fresh.length)
+          loss.run(
+            reply.session_id,
+            reply.sensor,
+            fresh[0].index,
+            fresh.at(-1).index,
+            'disk_full',
+            'pipeline',
+          );
+        const maxLoss = Math.max(
+          -1,
+          ...(reply.lost ?? []).map((item) => Number(item.to_index ?? -1)),
+        );
+        const previous = Number(
+          this.get(
+            'SELECT next_index FROM cursors WHERE session=? AND sensor=?',
+            reply.session_id,
+            reply.sensor,
+          )?.next_index ?? 0,
+        );
+        const storedEnd = fresh.length ? fresh.at(-1).index + 1 : 0;
+        const next = Math.max(
+          storedEnd,
+          Number(reply.first_index) + Number(reply.count),
+          maxLoss + 1,
+          previous,
+        );
+        advance.run(
+          next,
+          reply.session_end ? 1 : 0,
+          reply.session_id,
+          reply.sensor,
+        );
+        const cursorState = this.get(
+          'SELECT COUNT(*) total,COALESCE(SUM(ended),0) ended FROM cursors WHERE session=?',
+          reply.session_id,
+        );
+        if (cursorState.total >= 2 && cursorState.ended === 2)
+          this.run('UPDATE sessions SET ended=1 WHERE id=?', reply.session_id);
+        if (dropSamples)
+          this.run(
+            "INSERT OR REPLACE INTO meta(key,value) VALUES('disk_full','true')",
+          );
+      });
+    try {
+      persist(false);
+    } catch (error) {
+      if (error.code !== 'SQLITE_FULL') throw error;
+      try {
+        fs.unlinkSync(this.reservePath);
+      } catch (unlinkError) {
+        if (unlinkError.code !== 'ENOENT') throw unlinkError;
+      }
+      persist(true);
+    }
   }
 }

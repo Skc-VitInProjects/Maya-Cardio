@@ -11,25 +11,25 @@ Heartbeat Pipeline collects two 400 Hz biosignals, commits accepted replies to a
 
 ## Device installation
 
-Clone the repository to `/opt/heartbeat-pipeline`, run `npm install`, and run `sudo ./deploy/install.sh`. Edit `/etc/heartbeat-pipeline/pipeline.env` with the mock address, cloud URL, API key, and data directory, then start the service with `sudo systemctl start pipeline`. Start the unmodified mock separately with `biosignal-mock --mode signal --seed 7 --duration 3600 --port 7100`.
+Clone the repository to `/opt/heartbeat-pipeline`, run `npm ci`, and run `sudo bash ./deploy/install.sh`. Edit `/etc/heartbeat-pipeline/pipeline.env` with the mock address, cloud URL, API key, and data directory, then start the service with `sudo systemctl start pipeline`. Start the unmodified mock separately with `biosignal-mock --mode signal --seed 7 --duration 3600 --port 7100`.
 
-| Variable | Purpose | Default |
-|---|---|---|
-| `PIPELINE_MOCK_HOST` | Mock TCP hostname | `127.0.0.1` |
-| `PIPELINE_MOCK_PORT` | Mock TCP port | `7100` |
-| `PIPELINE_CLOUD_URL` | Cloud base URL | unset |
-| `PIPELINE_API_KEY` | Cloud write/export key | unset |
-| `PIPELINE_DATA_DIR` | Device data directory | `./data` |
-| `PIPELINE_POLL_MS` | Sensor polling interval | `500` |
+| Variable             | Purpose                 | Default     |
+| -------------------- | ----------------------- | ----------- |
+| `PIPELINE_MOCK_HOST` | Mock TCP hostname       | `127.0.0.1` |
+| `PIPELINE_MOCK_PORT` | Mock TCP port           | `7100`      |
+| `PIPELINE_CLOUD_URL` | Cloud base URL          | unset       |
+| `PIPELINE_API_KEY`   | Cloud write/export key  | unset       |
+| `PIPELINE_DATA_DIR`  | Device data directory   | `./data`    |
+| `PIPELINE_POLL_MS`   | Sensor polling interval | `500`       |
 
 Commands are `pipeline run`, `pipeline status`, `pipeline export --session ID --from device|cloud`, and `pipeline results --session ID`. Exports are newline-delimited JSON.
 
 ## Cloud deployment
 
-Create an Atlas M0 database in a nearby region, create a strong database password, and configure network access for Render (the free service has no fixed outbound IP). Deploy this directory using `deploy/render.yaml`; set `MONGODB_URI`, `MONGODB_DB`, and a long random `API_KEY`. Configure the device with the deployed URL and same key. Add a free uptime monitor for `/api/v1/health` at its shortest available interval to keep the free web service warm. Monitor Atlas storage: the M0 tier is limited and the ingest must be stopped or old test sessions deleted before it fills.
+Create an Atlas M0 database in a nearby region, create a strong database password, and configure network access for Render (the free service has no fixed outbound IP). Create a Render Blueprint from the repository-root `render.yaml`; set `MONGODB_URI`, `MONGODB_DB`, and a long random `API_KEY`. Configure the device with the deployed URL and same key. Add a free uptime monitor for `/api/v1/health` at its shortest available interval to keep the free web service warm. Monitor Atlas storage: the M0 tier is limited and the ingest must be stopped or old test sessions deleted before it fills.
 
 ## Verification and operations
 
-Use `tools/verify-ramp.js` with device or cloud NDJSON export on stdin to check ramp values. `tools/fault-proxy.js` can proxy the mock for corrupt, duplicate, or stalled replies. `tools/faults.sh` provides guarded operator actions; destructive actions belong only on a disposable test environment. `tools/resource-log.sh PID eth0 3600` records resource use on Linux. Store actual commands, logs, and results in `docs/evidence/`.
+Use `tools/verify-ramp.js` with device or cloud NDJSON export on stdin to check ramp values. `tools/fault-proxy.js` can proxy the mock for corrupt, duplicate, stalled, and sensor-specific stalled replies. `bash tools/faults.sh` provides guarded operator actions; destructive actions belong only on a disposable test environment. Run `bash tools/resource-log.sh PID eth0 3600` to record resource use on Linux, including compressed uploader body bytes and interface transmit bytes. Store actual commands, logs, and results in `docs/evidence/`.
 
 See [DESIGN.md](DESIGN.md) for guarantees and limitations and [TESTING.md](TESTING.md) for the acceptance matrix. Do not report a test, cloud deployment, ARM64 measurement, or resource run as completed unless its evidence was collected.

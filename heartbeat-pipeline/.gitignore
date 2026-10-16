@@ -5,3 +5,4 @@ data
 coverage
 docs/evidence/*
 !docs/evidence/.gitkeep
+!docs/evidence/*.md

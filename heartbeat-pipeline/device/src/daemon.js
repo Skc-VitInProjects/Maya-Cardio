@@ -9,13 +9,21 @@ import { runUploader } from './uploader.js';
 export async function runDaemon(config) {
   fs.mkdirSync(config.dataDir, { recursive: true });
   const store = new Store(config.dbPath);
-  const unfinished = store.get('SELECT id FROM sessions WHERE ended=0 ORDER BY first_seen DESC LIMIT 1');
+  const unfinished = store.get(
+    'SELECT id FROM sessions WHERE ended=0 ORDER BY first_seen DESC LIMIT 1',
+  );
   const sessionState = { current: unfinished?.id ?? null };
   let stopping = false;
-  const stop = () => { stopping = true; };
-  process.once('SIGINT', stop); process.once('SIGTERM', stop);
-  const background = [runModeLoop(config, store, () => stopping), runUploader(config, store, () => stopping)];
-  const collectorLoop = async sensor => {
+  const stop = () => {
+    stopping = true;
+  };
+  process.once('SIGINT', stop);
+  process.once('SIGTERM', stop);
+  const background = [
+    runModeLoop(config, store, () => stopping),
+    runUploader(config, store, () => stopping),
+  ];
+  const collectorLoop = async (sensor) => {
     while (!stopping) {
       const started = performance.now();
       try {
@@ -23,13 +31,28 @@ export async function runDaemon(config) {
         await processOffline(store, sessionState.current);
       } catch (error) {
         if (error.code === 'SQLITE_FULL' || /SQLITE_FULL/.test(error.message)) {
-          try { fs.unlinkSync(store.reservePath); } catch {}
-          const cursor = sessionState.current && store.get('SELECT next_index FROM cursors WHERE session=? AND sensor=?', sessionState.current, sensor);
-          if (cursor) store.run('INSERT OR IGNORE INTO losses(session,sensor,from_index,to_index,reason,source) VALUES(?,?,?,NULL,?,?)', sessionState.current, sensor, cursor.next_index, 'disk_full', 'pipeline');
-          store.run("INSERT OR REPLACE INTO meta(key,value) VALUES('disk_full','true')");
-        } else process.stderr.write(`${JSON.stringify({ level: 'warn', event: 'collector_error', sensor, message: error.message })}\n`);
+          try {
+            fs.unlinkSync(store.reservePath);
+          } catch (unlinkError) {
+            if (unlinkError.code !== 'ENOENT')
+              process.stderr.write(
+                `${JSON.stringify({ level: 'error', event: 'reserve_release_failed', message: unlinkError.message })}\n`,
+              );
+          }
+          process.stderr.write(
+            `${JSON.stringify({ level: 'error', event: 'disk_full_unrecorded', sensor, message: 'Unable to commit the exact reply loss after reserve release' })}\n`,
+          );
+        } else
+          process.stderr.write(
+            `${JSON.stringify({ level: 'warn', event: 'collector_error', sensor, message: error.message })}\n`,
+          );
       }
-      await new Promise(resolve => setTimeout(resolve, Math.max(0, config.pollMs - (performance.now() - started))));
+      await new Promise((resolve) =>
+        setTimeout(
+          resolve,
+          Math.max(0, config.pollMs - (performance.now() - started)),
+        ),
+      );
     }
   };
   await Promise.allSettled([...background, collectorLoop(1), collectorLoop(2)]);

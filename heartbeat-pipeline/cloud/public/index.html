@@ -1,9 +1,85 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Heartbeat Pipeline</title><link rel="stylesheet" href="/app.css"></head>
-<body><main class="shell"><header><div><p class="eyebrow">MayaCardio · device monitor</p><h1>Heartbeat Pipeline</h1></div><label>Session <select id="sessions" aria-label="Select session"><option value="">Loading…</option></select></label></header>
-<p id="stale" class="stale" role="status" hidden>Connection stale · retrying</p>
-<section class="cards" aria-label="Pipeline status"><article><span>Mode</span><strong id="mode" aria-live="polite">—</strong></article><article><span>Device saved</span><strong id="saved">—</strong></article><article><span>In cloud</span><strong id="cloud">—</strong></article><article><span>Backlog</span><strong id="backlog">—</strong></article><article><span>Heart rate</span><strong id="rate">—</strong></article></section>
-<section class="panel"><h2>Recent heart rate</h2><svg id="chart" viewBox="0 0 720 190" role="img" aria-label="Recent heart rate chart"><path class="axis" d="M40 15V155H700"/><path id="line" class="line" d=""/><g id="dots"></g></svg></section>
-<section class="grid"><article class="panel"><h2>Recent windows</h2><div class="scroll"><table><thead><tr><th>Window</th><th>Mode</th><th>Rate</th></tr></thead><tbody id="windows"></tbody></table></div></article><article class="panel"><h2>Losses</h2><div class="scroll"><table><thead><tr><th>Sensor</th><th>Range</th><th>Reason</th></tr></thead><tbody id="losses"></tbody></table></div></article></section>
-</main><script src="/app.js" defer></script></body></html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Heartbeat Pipeline</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <div>
+          <p class="eyebrow">MayaCardio · device monitor</p>
+          <h1>Heartbeat Pipeline</h1>
+        </div>
+        <label
+          >Session
+          <select id="sessions" aria-label="Select session">
+            <option value="">Loading…</option>
+          </select></label
+        >
+      </header>
+      <p id="stale" class="stale" role="status" hidden>
+        Connection stale · retrying
+      </p>
+      <section class="cards" aria-label="Pipeline status">
+        <article>
+          <span>Mode</span><strong id="mode" aria-live="polite">—</strong>
+        </article>
+        <article>
+          <span>Device saved</span><strong id="saved">—</strong>
+        </article>
+        <article><span>In cloud</span><strong id="cloud">—</strong></article>
+        <article><span>Backlog</span><strong id="backlog">—</strong></article>
+        <article><span>Heart rate</span><strong id="rate">—</strong></article>
+      </section>
+      <section class="panel">
+        <h2>Recent heart rate</h2>
+        <svg
+          id="chart"
+          viewBox="0 0 720 190"
+          role="img"
+          aria-label="Recent heart rate chart"
+        >
+          <path class="axis" d="M40 15V155H700" />
+          <path id="line" class="line" d="" />
+          <g id="dots"></g>
+        </svg>
+      </section>
+      <section class="grid">
+        <article class="panel">
+          <h2>Recent windows</h2>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Window</th>
+                  <th>Mode</th>
+                  <th>Rate</th>
+                </tr>
+              </thead>
+              <tbody id="windows"></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="panel">
+          <h2>Losses</h2>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Sensor</th>
+                  <th>Range</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody id="losses"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    </main>
+    <script src="/app.js" defer></script>
+  </body>
+</html>

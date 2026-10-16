@@ -16,6 +16,10 @@ export function packInt24(values) {
 
 /** Unpack Buffer of signed 24-bit big endian values. */
 export function unpackInt24(buf) {
+  if (!Buffer.isBuffer(buf) && !(buf instanceof Uint8Array))
+    throw new TypeError('Expected bytes for signed 24-bit data');
+  if (buf.length % 3 !== 0)
+    throw new RangeError('Signed 24-bit payload length must be divisible by 3');
   const count = Math.floor(buf.length / 3);
   const values = new Array(count);
   for (let i = 0; i < count; i++) {

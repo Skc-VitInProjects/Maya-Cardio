@@ -3,7 +3,7 @@ services:
     name: heartbeat-pipeline
     runtime: node
     plan: free
-    rootDir: .
+    rootDir: heartbeat-pipeline
     buildCommand: npm ci
     startCommand: npm --workspace @heartbeat/cloud start
     healthCheckPath: /api/v1/health

@@ -1,23 +1,23 @@
-# Design and guarantees
+# Design note
 
 ## Architecture
 
-The collector is the only mock client. It requests each sensor independently, checks the CRC against the raw `data` array substring, removes duplicate indices, and commits chunks, cursors, and reported losses to SQLite in a transaction with WAL and `synchronous=FULL`. The device uploader retries idempotent chunk and loss upserts. The cloud uses unique keys on `(session, sensor, first_index)` and `(session, sensor, from_index, reason)`. The same core package supplies integer packing, statistics, peak detection, and rounding to both sides.
+One device daemon is the only TCP client of the unmodified mock. It requests both sensors, validates each reply's CRC from the raw `data` substring, checks sample identity and values, detects gaps and compares overlapping samples. Each accepted reply is committed to SQLite in one transaction using WAL and `synchronous=FULL`; the commit is the point at which a sample is called saved. Sample keys are `(session, sensor, index)`. Losses are recorded with their source and reason, including an open-ended loss when the mock's old session end cannot be determined.
 
-The API runs on Express and stores records in MongoDB Atlas. The dashboard is a static page served by Express. Cloud credentials, the ARM64 mock executable, and actual deployment settings are supplied by the operator.
+An independent heartbeat loop switches the device between online and offline modes. The uploader sends unacknowledged chunks and losses as gzip batches. MongoDB unique indexes and idempotent upserts make retries safe. The cloud processor and the local offline processor use the same `core` code for decoding, statistics and heart rate. Data exports stream as NDJSON. The Express API also serves the static dashboard.
 
 ## Guarantees and limits
 
-The collector treats a sample as saved only after its SQLite transaction commits. It does not interpolate gaps. Reported mock losses and detected gaps are retained with their source and reason. Repeated uploads use idempotency keys. Ordering and deduplication use sample indices, never wall-clock time.
+After a successful SQLite commit, accepted samples are durable subject to the storage device honoring flushes. Retries do not create duplicate chunks. A returned loss range is retained as unavailable; the application never fills a gap with invented values. Indexes, rather than wall-clock timestamps, determine order. The included local tests cover core functions, selected differential heart-rate windows with deterministic gaps, duplicate replies and restart-from-zero behavior.
 
-The project has not been tested here against the supplied mock or on ARM64. It does not establish that a particular SD card honors fsync, that cloud quotas remain available, or that data the mock discards before delivery can be recovered. Free cloud services may sleep or reject writes at quota limits. The stateless heart-rate scan needs differential validation against the assessment reference, especially for pathological signals and gaps.
+This is not yet an acceptance-tested deployment. No supplied mock/ground-truth binary, ARM64 board, Atlas database or cloud deployment was available during this review. Therefore the online latency, switching deadline, full outage catch-up, SD-card power-fail behavior, full ground-truth parity and the cloud service's free-tier capacity are not established. `synchronous=FULL` cannot protect against hardware that lies about flush completion. An unknown loss end means the exact number of lost samples is unknown.
 
-## Power loss and measurements
+Heart-rate missingness currently assumes sensor 1 only, and the code uses JavaScript's centralized `round1()` rule; confirm both plus the output schema against the judge's reference.
 
-The design target is no more than **2 seconds per sensor**: one reply may be in flight while the mock retains an approximately 10-second unread buffer. Committed replies use `synchronous=FULL`; an uncommitted reply is not counted as saved and must be recovered from the mock or represented as an unknown-tail loss after its session changes. This is a design bound, not a measured result. Replace it with the observed maximum from power-cut evidence.
+## Power-cut loss bound
 
-ARM64 environment: **not measured**. One-hour online run: **not run**. Average CPU: **TBD**. Peak memory: **TBD**. Disk writes: **TBD**. Network sent: **TBD**. Measure on the target ARM64 environment with `tools/resource-log.sh` and retain the raw logs.
+There is **no finite maximum loss independent of outage duration** in the current system. A reply not yet committed is not saved. The mock retains only its latest 10 seconds per sensor; after a power cut, unread samples can be reread while they remain in that buffer. If the device is unavailable longer than the buffer, the mock discards older unread samples and reports them as a loss. If the mock restarts, the old session end may be unknown and is recorded with `to_index: null`. Thus a restart within the retention period can recover pending samples, but a longer cut can lose the unread interval accumulated during downtime; the exact count depends on the cut duration and mock behavior. The former two-second claim was unsupported and has been removed.
 
-## Open assessment assumptions
+## ARM64 resource figures
 
-The brief leaves the time limit, date, mock download location, and unknown-tail export expectations blank. The implementation assumes heart-rate missingness applies to sensor 1 and emits only complete windows. Confirm the reference output schema, tie-rounding rule, mock poll behavior, and treatment of unknown loss endpoints with the assessment contact.
+**Not measured.** The required one-hour online run has not been performed. Environment, duration, average CPU, peak memory, disk writes and network bytes must be recorded from the constrained ARM64 host using `tools/resource-log.sh`; do not substitute an extrapolation for a measurement.

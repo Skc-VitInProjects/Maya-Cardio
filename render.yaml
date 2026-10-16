@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: heartbeat-pipeline
+    runtime: node
+    plan: free
+    rootDir: heartbeat-pipeline
+    buildCommand: npm ci
+    startCommand: npm --workspace @heartbeat/cloud start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: heartbeat
+      - key: API_KEY
+        sync: false
