@@ -63,7 +63,7 @@ pipeline results --session SESSION_ID
 
 ## Cloud setup
 
-The free-tier cloud uses Express and MongoDB Atlas. Deploy the repository-root [`render.yaml`](render.yaml) as a Render Blueprint, then set `MONGODB_URI`, `MONGODB_DB`, and a strong `API_KEY` in the service environment. Point Atlas network access at the service as required by the chosen free plan. The dashboard is served by the API. Configure a free uptime monitor for `/api/v1/health` if the service sleeps; the device also probes it once per second.
+The free-tier cloud uses Express and MongoDB Atlas. Deploy the repository-root [`render.yaml`](render.yaml) as a Render Blueprint. It pins Node.js 22.23.0 and installs only the cloud and shared-core workspaces; the device's native SQLite dependency is not needed by the cloud service. Set `MONGODB_URI`, `MONGODB_DB`, and a strong `API_KEY` in the service environment. Point Atlas network access at the service as required by the chosen free plan. The dashboard is served by the API. Configure a free uptime monitor for `/api/v1/health` if the service sleeps; the device also probes it once per second.
 
 ## Checks and submission status
 
