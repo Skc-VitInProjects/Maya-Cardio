@@ -2,6 +2,10 @@
 
 Heartbeat Pipeline collects two 400 Hz biosignals, commits accepted replies to a local SQLite WAL database, and synchronizes data to a MongoDB-backed cloud API. The device keeps collecting while the cloud is unavailable. Its accounting rule is: each known sample index is stored once or covered by a loss record with a reason.
 
+## Live dashboard
+
+The deployed [Heartbeat Pipeline dashboard](https://heartbeat-pipeline.onrender.com/) shows cloud sessions, sample counts, backlog, recent heart-rate windows, and recorded losses. The health endpoint is [https://heartbeat-pipeline.onrender.com/api/v1/health](https://heartbeat-pipeline.onrender.com/api/v1/health). All assessment data must be synthetic.
+
 ## Requirements
 
 - Raspberry Pi OS 64-bit or another ARM64 Linux host limited to four cores and 2 GB RAM.
@@ -26,7 +30,7 @@ Commands are `pipeline run`, `pipeline status`, `pipeline export --session ID --
 
 ## Cloud deployment
 
-Create an Atlas M0 database in a nearby region, create a strong database password, and configure network access for Render (the free service has no fixed outbound IP). Create a Render Blueprint from the repository-root `render.yaml`; set `MONGODB_URI`, `MONGODB_DB`, and a long random `API_KEY`. Configure the device with the deployed URL and same key. Add a free uptime monitor for `/api/v1/health` at its shortest available interval to keep the free web service warm. Monitor Atlas storage: the M0 tier is limited and the ingest must be stopped or old test sessions deleted before it fills.
+Create an Atlas M0 database in a nearby region and a database user with read/write access to the `heartbeat` database. Configure Atlas network access for the Render service; the free service has no fixed outbound IP. Create a Render Blueprint from the repository-root `render.yaml`, then set `MONGODB_URI`, `MONGODB_DB=heartbeat`, and a long random `API_KEY` in the service environment. Configure the device with `PIPELINE_CLOUD_URL=https://heartbeat-pipeline.onrender.com` and the same key as `PIPELINE_API_KEY`. If Atlas reports `bad auth`, verify the database username/password and percent-encode reserved characters in the URI credentials. Add a free uptime monitor for `/api/v1/health` if needed. Monitor Atlas storage: the M0 tier is limited, so stop ingest or remove old synthetic test sessions before it fills.
 
 ## Verification and operations
 
